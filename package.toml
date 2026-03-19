@@ -1,0 +1,6 @@
+[buildpack]
+uri = "."
+
+[[targets]]
+os = "linux"
+arch = "amd64"

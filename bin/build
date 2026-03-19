@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# CNB build phase
+# Installs the Excimer PHP extension into a layer using PECL.
+# Must run AFTER heroku/php so that php and pecl are available.
+
+set -euo pipefail
+
+LAYERS_DIR="${CNB_LAYERS_DIR:-$1}"
+APP_DIR="${CNB_APP_DIR:-$2}"
+
+LAYER_NAME="php-excimer"
+LAYER_DIR="${LAYERS_DIR}/${LAYER_NAME}"
+EXT_DIR="${LAYER_DIR}/extensions"
+INI_DIR="${LAYER_DIR}/ini"
+
+echo "-----> PHP Excimer Buildpack"
+
+# Check pecl is available (provided by heroku/php)
+if ! command -v pecl >/dev/null 2>&1; then
+  echo "ERROR: pecl not found. Ensure heroku/php buildpack runs before this one." >&2
+  exit 1
+fi
+
+# Check PHP is available
+if ! command -v php >/dev/null 2>&1; then
+  echo "ERROR: php not found. Ensure heroku/php buildpack runs before this one." >&2
+  exit 1
+fi
+
+# Re-use cached layer if excimer.so already exists and PHP version hasn't changed
+PHP_VERSION="$(php -r 'echo PHP_VERSION;')"
+CACHED_VERSION_FILE="${LAYER_DIR}/.php-version"
+
+if [[ -f "${EXT_DIR}/excimer.so" && -f "${CACHED_VERSION_FILE}" ]]; then
+  CACHED_PHP_VERSION="$(cat "${CACHED_VERSION_FILE}")"
+  if [[ "${CACHED_PHP_VERSION}" == "${PHP_VERSION}" ]]; then
+    echo "-----> Reusing cached excimer (PHP ${PHP_VERSION})"
+
+    # Re-write layer.toml so the layer stays active
+    cat > "${LAYER_DIR}.toml" <<EOF
+[types]
+build = false
+launch = true
+cache = true
+EOF
+    exit 0
+  fi
+fi
+
+echo "-----> Installing excimer via PECL (PHP ${PHP_VERSION})"
+
+# Create fresh layer directories
+rm -rf "${LAYER_DIR}"
+mkdir -p "${EXT_DIR}" "${INI_DIR}"
+
+# Write layer metadata
+cat > "${LAYER_DIR}.toml" <<EOF
+[types]
+build = false
+launch = true
+cache = true
+EOF
+
+# Install excimer (printf "\n" accepts any prompts non-interactively)
+printf "\n" | pecl install excimer 2>&1 | sed 's/^/       /'
+
+# Locate where PHP placed the .so
+PHP_EXT_DIR="$(php -r 'echo ini_get("extension_dir");')"
+
+if [[ ! -f "${PHP_EXT_DIR}/excimer.so" ]]; then
+  echo "ERROR: excimer.so not found in ${PHP_EXT_DIR} after install." >&2
+  exit 1
+fi
+
+# Copy .so into our layer
+cp "${PHP_EXT_DIR}/excimer.so" "${EXT_DIR}/"
+
+# Write ini file pointing to our copy
+cat > "${INI_DIR}/excimer.ini" <<EOF
+extension=${EXT_DIR}/excimer.so
+EOF
+
+# Expose ini directory via PHP_INI_SCAN_DIR (prepend so it loads early)
+mkdir -p "${LAYER_DIR}/env.launch"
+printf "%s" "${INI_DIR}" > "${LAYER_DIR}/env.launch/PHP_INI_SCAN_DIR.prepend"
+printf "%s" ":"           > "${LAYER_DIR}/env.launch/PHP_INI_SCAN_DIR.delim"
+
+# Also expose for build-time PHP_INI_SCAN_DIR (e.g. composer scripts)
+mkdir -p "${LAYER_DIR}/env.build"
+printf "%s" "${INI_DIR}" > "${LAYER_DIR}/env.build/PHP_INI_SCAN_DIR.prepend"
+printf "%s" ":"           > "${LAYER_DIR}/env.build/PHP_INI_SCAN_DIR.delim"
+
+# Cache the PHP version so we can skip reinstall on unchanged versions
+echo "${PHP_VERSION}" > "${CACHED_VERSION_FILE}"
+
+echo "-----> excimer installed successfully"

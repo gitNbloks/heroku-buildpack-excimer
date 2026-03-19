@@ -1,0 +1,15 @@
+api = "0.10"
+
+[buildpack]
+id = "heroku/php-excimer"
+version = "0.1.0"
+name = "PHP Excimer Buildpack"
+description = "Installs the Excimer PHP extension (low-overhead sampling profiler)"
+homepage = "https://www.mediawiki.org/wiki/Excimer"
+
+[[targets]]
+os = "linux"
+arch = "amd64"
+
+[[stacks]]
+id = "heroku-24"

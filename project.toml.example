@@ -1,0 +1,13 @@
+# project.toml — place this in your app repo root
+#
+# Order matters: heroku/php must come FIRST so that php and pecl
+# are available when the excimer buildpack runs.
+
+[_]
+schema-version = "0.2"
+
+[[io.buildpacks.group]]
+uri = "heroku/php"
+
+[[io.buildpacks.group]]
+uri = "docker.io/heroku/php-excimer"   # replace with your published image

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# CNB detect phase
+# Applies to any PHP app (composer.json or composer.lock present)
+
+set -euo pipefail
+
+BUILD_DIR="${CNB_BUILD_DIR:-$1}"
+
+if [[ -f "${BUILD_DIR}/composer.json" || -f "${BUILD_DIR}/composer.lock" ]]; then
+  echo "PHP Excimer"
+  exit 0
+fi
+
+exit 100
