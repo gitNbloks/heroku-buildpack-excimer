@@ -21,7 +21,7 @@ schema-version = "0.2"
 uri = "heroku/php"
 
 [[io.buildpacks.group]]
-uri = "docker.io/heroku/php-excimer"   # replace with your published image
+uri = "docker.io/gitnbloks/php-excimer"   # replace with your published image
 ```
 
 > **Important:** `heroku/php` must be listed **before** this buildpack.

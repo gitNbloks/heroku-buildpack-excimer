@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BUILD_DIR="$1"
+CACHE_DIR="$2"
+ENV_DIR="$3"
+
+echo "-----> Installing excimer PHP extension"
+
+# Locate php and pecl installed by heroku/php buildpack
+PECL=$(find "$BUILD_DIR/.heroku/php/bin" -name "pecl" 2>/dev/null | head -1)
+PHP=$(find "$BUILD_DIR/.heroku/php/bin" -name "php" -type f 2>/dev/null | head -1)
+
+if [[ -z "$PECL" ]]; then
+  echo "       ERROR: pecl not found in $BUILD_DIR/.heroku/php/bin"
+  echo "              Ensure heroku/php is listed before this buildpack."
+  exit 1
+fi
+
+PHP_BIN_DIR="$(dirname "$PHP")"
+export PATH="$PHP_BIN_DIR:$PATH"
+
+PHP_VERSION="$("$PHP" -r 'echo PHP_VERSION;')"
+echo "       PHP version: $PHP_VERSION"
+
+# Use cache to avoid reinstalling when PHP version hasn't changed
+CACHE_KEY_FILE="$CACHE_DIR/excimer-php-version"
+EXT_CACHE_DIR="$CACHE_DIR/excimer-ext"
+
+if [[ -f "$CACHE_KEY_FILE" && "$(cat "$CACHE_KEY_FILE")" == "$PHP_VERSION" && -f "$EXT_CACHE_DIR/excimer.so" ]]; then
+  echo "       Reusing cached excimer.so (PHP $PHP_VERSION)"
+else
+  echo "       Building excimer via PECL..."
+  printf "\n" | "$PECL" install excimer 2>&1 | sed 's/^/       /'
+
+  PHP_EXT_DIR="$("$PHP" -r 'echo ini_get("extension_dir");')"
+
+  if [[ ! -f "$PHP_EXT_DIR/excimer.so" ]]; then
+    echo "       ERROR: excimer.so not found in $PHP_EXT_DIR after install."
+    exit 1
+  fi
+
+  mkdir -p "$EXT_CACHE_DIR"
+  cp "$PHP_EXT_DIR/excimer.so" "$EXT_CACHE_DIR/"
+  echo "$PHP_VERSION" > "$CACHE_KEY_FILE"
+fi
+
+# Copy .so into the Heroku PHP extension directory
+PHP_EXT_DIR="$("$PHP" -r 'echo ini_get("extension_dir");')"
+cp "$EXT_CACHE_DIR/excimer.so" "$PHP_EXT_DIR/"
+
+# Write ini file so PHP loads it
+CONF_DIR="$BUILD_DIR/.heroku/php/etc/php/conf.d"
+mkdir -p "$CONF_DIR"
+echo "extension=excimer" > "$CONF_DIR/excimer.ini"
+
+echo "       excimer installed successfully"
