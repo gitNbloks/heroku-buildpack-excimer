@@ -1,6 +1,6 @@
 # heroku-buildpack-excimer
 
-A Cloud Native Buildpack (CNB) that installs the [Excimer](https://www.mediawiki.org/wiki/Excimer) PHP extension — a low-overhead, sampling profiler — on top of Heroku PHP 24.
+A Cloud Native Buildpack (CNB) that installs the [Excimer](https://www.mediawiki.org/wiki/Excimer) PHP extension on top of Heroku PHP 24.
 
 ## How it works
 
