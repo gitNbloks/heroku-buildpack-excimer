@@ -36,6 +36,11 @@ pack buildpack package heroku/php-excimer --config ./package.toml
 pack build my-app --builder heroku/builder:24 --config ./project.toml
 ```
 
+## Add to heroku project
+```
+heroku buildpacks:add https://github.com/gitNbloks/heroku-buildpack-excimer --index 2 -a [your app name]
+```
+
 ## Requirements
 
 - Heroku stack: `heroku-24`
