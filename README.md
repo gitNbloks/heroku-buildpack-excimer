@@ -38,7 +38,7 @@ pack build my-app --builder heroku/builder:24 --config ./project.toml
 
 ## Add to heroku project
 ```
-heroku buildpacks:add https://github.com/gitNbloks/heroku-buildpack-excimer --index 2 -a [your app name]
+heroku buildpacks:add https://github.com/teamtv/heroku-buildpack-excimer --index 2 -a [your app name]
 ```
 
 ## Requirements
